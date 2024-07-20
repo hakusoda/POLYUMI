@@ -50,6 +50,7 @@ impl From<ErrorModelKind> for ErrorModel {
 
 impl From<Error> for ErrorModel {
 	fn from(value: Error) -> Self {
+		println!("{value:?}");
 		Self {
 			error: match value {
 				Error::Base64Decode(..) |

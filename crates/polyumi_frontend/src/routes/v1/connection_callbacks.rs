@@ -5,7 +5,8 @@ use actix_web::{
 	HttpRequest, HttpResponse, Responder,
 	get
 };
-use jsonwebtoken::{ Header, encode };
+use chrono::Utc;
+use jsonwebtoken::{ encode, Header };
 use polyumi_cache::CACHE;
 use polyumi_models::{
 	hakumi::user::connection::{ ConnectionKind, ConnectionModel },
@@ -50,6 +51,7 @@ struct CallbackQuery {
 struct BasicToken {
 	access_token: String,
 	refresh_token: String,
+	expires_in: u32,
 	token_type: String
 }
 
@@ -92,10 +94,12 @@ struct CallbackResponse {
 	avatar_url: Option<String>,
 	display_name: Option<String>,
 	name: Option<String>,
+	oauth_authorisation: Option<(BasicToken, Vec<String>)>,
 	sub: String,
 	website_url: Option<String>
 }
 
+const API_URL: &str = env!("API_URL");
 const DISCORD_APP_ID: &str = env!("DISCORD_APP_ID");
 const DISCORD_APP_SECRET: &str = env!("DISCORD_APP_SECRET");
 const PATREON_APP_ID: &str = env!("PATREON_APP_ID");
@@ -116,12 +120,26 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 		.await?;
 
 	let connection_kind = path.into_inner();
-	let user_id = if !(query.state.as_ref().is_some_and(|x| x.starts_with("mellow_new")) && matches!(connection_kind, ConnectionKind::Discord)) {
-		Some(session
+	let (mellow_server_id, user_id) = if let Some(state) = &query.state && state.starts_with("m1-") {
+		if let Some(record) = sqlx::query!(
+			"
+			DELETE FROM mellow_connection_requests
+			WHERE token = $1
+			RETURNING server_id, user_id
+			",
+			&state[3..]
+		)
+			.fetch_optional(&*Pin::static_ref(&PG_POOL).await)
+			.await?
+		{
+			(Some(DiscordId::new(record.server_id as u64)), Some(record.user_id.into()))
+		} else { return Err(ErrorModelKind::InvalidCredentials.model()) }
+	} else if !(query.state.as_ref().is_some_and(|x| x.starts_with("mellow_new")) && matches!(connection_kind, ConnectionKind::Discord)) {
+		(None, Some(session
 			.required()?
 			.user_id
-		)
-	} else { session.as_ref().map(|x| x.user_id) };
+		))
+	} else { (None, session.as_ref().map(|x| x.user_id)) };
 
 	let response = match &connection_kind {
 		ConnectionKind::Discord => {
@@ -134,7 +152,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 				("client_id", DISCORD_APP_ID.into()),
 				("client_secret", DISCORD_APP_SECRET.into()),
 				("grant_type", "authorization_code".into()),
-				("redirect_uri", format!("https://api-new.hakumi.cafe/v1/connection_callback/{}", connection_kind.discriminant()))
+				("redirect_uri", format!("{API_URL}/v1/connection_callback/{}", connection_kind.discriminant()))
 			]);
 			
 			let token: BasicToken = post_json("https://discord.com/api/v10/oauth2/token")
@@ -153,6 +171,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 					.map(|x| format!("https://cdn.discordapp.com/avatars/{sub}/{x}.{}?size=256", if x.starts_with("a_") { "gif" } else { "webp" })),
 				display_name: user.global_name,
 				name: Some(user.username),
+				oauth_authorisation: None,
 				sub: sub.to_string(),
 				website_url
 			}
@@ -170,7 +189,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 				("client_id", PATREON_APP_ID.into()),
 				("client_secret", PATREON_APP_SECRET.into()),
 				("grant_type", "authorization_code".into()),
-				("redirect_uri", format!("https://api-new.hakumi.cafe/v1/connection_callback/{}", connection_kind.discriminant()))
+				("redirect_uri", format!("{API_URL}/v1/connection_callback/{}", connection_kind.discriminant()))
 			]);
 			
 			let token: BasicToken = post_json("https://patreon.com/api/oauth2/token")
@@ -187,6 +206,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 				avatar_url: Some(user.data.attributes.image_url),
 				display_name: Some(user.data.attributes.full_name),
 				name: Some(sub.clone()),
+				oauth_authorisation: Some((token, Vec::new())),
 				sub,
 				website_url
 			}
@@ -227,6 +247,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 				avatar_url: user.picture,
 				display_name: user.name,
 				name: user.preferred_username,
+				oauth_authorisation: None,
 				sub,
 				website_url
 			}
@@ -287,6 +308,24 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 		.fetch_one(&*pinned)
 		.await?;
 
+	if let Some((token, scopes)) = response.oauth_authorisation {
+		sqlx::query!(
+			"
+			INSERT INTO user_connection_oauth_authorisations (access_token, refresh_token, token_type, connection_id, expires_at, scopes, user_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			",
+			token.access_token,
+			token.refresh_token,
+			token.token_type,
+			record.id,
+			Utc::now(),
+			&scopes,
+			user_id.value
+		)
+			.execute(&*pinned)
+			.await?;
+	}
+
 	let connection_id = Id::new(record.id);
 	let new_model = CACHE
 		.hakumi
@@ -318,6 +357,30 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 			.build(ModelKind::UserConnection(user_id, connection_id))
 			.send()
 	);
+
+	if let Some(server_id) = mellow_server_id {
+		sqlx::query!(
+			"
+			INSERT INTO mellow_user_server_settings (server_id, user_connections, user_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (server_id, user_id)
+			DO UPDATE SET user_connections = $2
+			",
+			server_id.get() as i64,
+			serde_json::json!([ { "id": connection_id } ]),
+			user_id.value
+		)
+			.execute(&*pinned)
+			.await?;
+
+		tokio::spawn(
+			ModelEventKind::Updated
+				.build(ModelKind::UserSettings(server_id, user_id))
+				.send()
+		);
+
+		return Ok(HttpResponse::Ok().body("all done, you may now return to Discord! (this totally isn't unfinished)"));
+	}
 
 	let redirect_uri = if let Some(state) = &query.state && state.starts_with("mellow_user_settings") {
 		if state.ends_with("as_new_member") {
