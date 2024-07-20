@@ -5,7 +5,7 @@ use actix_web::{
 	HttpRequest, HttpResponse, Responder,
 	get
 };
-use chrono::Utc;
+use chrono::{ TimeDelta, Utc };
 use jsonwebtoken::{ encode, Header };
 use polyumi_cache::CACHE;
 use polyumi_models::{
@@ -318,7 +318,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 			token.refresh_token,
 			token.token_type,
 			record.id,
-			Utc::now(),
+			Utc::now().checked_add_signed(TimeDelta::seconds(token.expires_in as i64)).unwrap(),
 			&scopes,
 			user_id.value
 		)
