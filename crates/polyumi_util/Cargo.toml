@@ -1,0 +1,23 @@
+cargo-features = ["edition2024"]
+
+[package]
+name = "polyumi_util"
+description = "HAKUMI's Backend Service"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+actix-cors = "0.7.0"
+async-once-cell.workspace = true
+http = "1.1.0"
+once_cell.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+uuid.workspace = true

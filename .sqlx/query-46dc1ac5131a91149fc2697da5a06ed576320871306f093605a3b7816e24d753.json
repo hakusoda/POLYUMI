@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\tUPDATE mellow_servers\n\t\t\tSET skip_onboarding_to = $2\n\t\t\tWHERE id = $1\n\t\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "46dc1ac5131a91149fc2697da5a06ed576320871306f093605a3b7816e24d753"
+}

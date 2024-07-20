@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO mellow_user_server_settings (server_id, user_connections, user_id)\n\t\tVALUES ($1, $2, $3)\n\t\tON CONFLICT (server_id, user_id)\n\t\tDO UPDATE SET user_connections = $2\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2047cde3caee8c531212675ecd9a0f0e6a54b214730de4a270f1c7674e1b664f"
+}

@@ -1,0 +1,40 @@
+cargo-features = ["edition2024"]
+
+[package]
+name = "polyumi_frontend"
+description = "HAKUMI's Backend Service"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+actix-web.workspace = true
+base64.workspace = true
+base64urlsafedata.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+dashmap.workspace = true
+jsonwebtoken.workspace = true
+log.workspace = true
+once_cell.workspace = true
+reqwest = { features = ["json"], workspace = true }
+sqlx.workspace = true
+serde.workspace = true
+serde_cbor_2 = "0.12.0-dev"
+serde_with = "3.9.0"
+tokio.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+serde_json.workspace = true
+polyumi_util.path = "../polyumi_util"
+polyumi_cache.path = "../polyumi_cache"
+polyumi_models.path = "../polyumi_models"
+twilight-model.workspace = true
+urlencoding = "2.1.3"
+validator.workspace = true
+webauthn-rs-core = "0.5.0"

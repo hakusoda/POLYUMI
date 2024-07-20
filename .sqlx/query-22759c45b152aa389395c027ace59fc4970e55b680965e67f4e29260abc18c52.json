@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\t\tUPDATE mellow_servers\n\t\t\t\tSET allow_forced_syncing = $2\n\t\t\t\tWHERE id = $1\n\t\t\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "22759c45b152aa389395c027ace59fc4970e55b680965e67f4e29260abc18c52"
+}

@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\tSELECT u.id id, u.bio bio, u.name name, u.flags flags, u.username username, u.avatar_url avatar_url, u.banner_url banner_url, u.created_at created_at, u.profile_status profile_status, c.id as \"profile_cafe_id?\", u.theme_accent_colour theme_accent_colour, u.theme_primary_colour theme_primary_colour\n\t\t\tFROM users u\n\t\t\tLEFT JOIN cafes c ON c.owner_user_id = u.id AND c.kind = 'profile'\n\t\t\tWHERE u.id = ANY($1) OR LOWER(u.username) = ANY($2)\n\t\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "bio",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "flags",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 4,
+        "name": "username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "banner_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "profile_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "profile_cafe_id?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "theme_accent_colour",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "theme_primary_colour",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "c2897aff46b5080aeca8e79e3c6cabda03ffa398e7cef704f823bf75638f77c8"
+}

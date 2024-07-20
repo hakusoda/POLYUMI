@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO user_connections (avatar_url, display_name, sub, type, user_id, username, website_url)\n\t\tVALUES ($1, $2, $3, $4, $5, $6, $7)\n\t\tRETURNING id\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int2",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6a70e78a005b7f6107164113394a8bf69fb7716e56d5115add5deb9aa71ecbd0"
+}

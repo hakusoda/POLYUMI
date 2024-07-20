@@ -1,0 +1,19 @@
+cargo-features = ["edition2024"]
+
+[package]
+name = "polyumi"
+description = "HAKUMI's Backend Service"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+env_logger = "0.11.3"
+log.workspace = true
+polyumi_frontend.path = "../polyumi_frontend"
+tokio.workspace = true
