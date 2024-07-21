@@ -14,6 +14,7 @@ use polyumi_models::polyumi::ErrorModel;
 
 pub mod auth;
 pub mod routes;
+mod templates;
 
 pub type Result<T> = core::result::Result<T, ErrorModel>;
 

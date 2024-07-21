@@ -34,6 +34,12 @@ pub struct UserModel {
 }
 
 impl UserModel {
+	pub fn display_name(&self) -> &str {
+		self.name
+			.as_ref()
+			.unwrap_or(&self.username)
+	}
+
 	pub async fn get(user_ref: &str) -> Result<Option<Self>> {
 		Self::get_many(&[user_ref])
 			.await

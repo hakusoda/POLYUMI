@@ -15,6 +15,8 @@ use twilight_model::id::{
 use crate::Result;
 
 pub struct ServerModel {
+	pub name: String,
+	pub avatar_url: Option<String>,
 	pub owner_group_id: Option<Id<GroupMarker>>,
 	pub owner_user_id: Option<Id<UserMarker>>
 }
@@ -37,7 +39,7 @@ impl ServerModel {
 			.collect();
 		Ok(sqlx::query!(
 			"
-			SELECT owner_team_id, owner_user_id
+			SELECT name, avatar_url, owner_team_id, owner_user_id
 			FROM mellow_servers
 			WHERE id = ANY($1)
 			",
@@ -46,6 +48,8 @@ impl ServerModel {
 			.fetch(&*Pin::static_ref(&PG_POOL).await)
 			.try_fold(Vec::new(), |mut acc, record| {
 				acc.push(Self {
+					name: record.name,
+					avatar_url: record.avatar_url,
 					owner_group_id: record.owner_team_id.map(Id::new),
 					owner_user_id: record.owner_user_id.map(Id::new)
 				});

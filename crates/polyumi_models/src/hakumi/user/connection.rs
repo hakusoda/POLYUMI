@@ -126,7 +126,7 @@ impl ConnectionModel {
 	}
 }
 
-#[derive(Deserialize_repr, FromPrimitive, Serialize_repr)]
+#[derive(Clone, Debug, Deserialize_repr, FromPrimitive, Serialize_repr)]
 #[repr(u8)]
 pub enum ConnectionKind {
 	Discord,

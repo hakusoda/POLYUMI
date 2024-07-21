@@ -334,7 +334,7 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 		.insert(ConnectionModel {
 			id: connection_id,
 			sub: response.sub,
-			kind: connection_kind,
+			kind: connection_kind.clone(),
 			user_id,
 
 			username: response.name,
@@ -379,7 +379,8 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 				.send()
 		);
 
-		return Ok(HttpResponse::Ok().body("all done, you may now return to Discord! (this totally isn't unfinished)"));
+		return crate::templates::connection_callback::mellow_done(connection_kind, server_id, user_id)
+			.await;
 	}
 
 	let redirect_uri = if let Some(state) = &query.state && state.starts_with("mellow_user_settings") {
