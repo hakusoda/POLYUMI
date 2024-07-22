@@ -137,5 +137,6 @@ pub enum ResourceKind {
 	PasskeyChallenge,
 	Route,
 	User,
+	UserConnection,
 	VisualScriptingDocument
 }

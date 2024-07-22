@@ -343,6 +343,8 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 			avatar_url: response.avatar_url,
 			website_url: response.website_url,
 
+			is_public: false,
+
 			oauth_authorisations: Vec::new()
 		});
 	CACHE

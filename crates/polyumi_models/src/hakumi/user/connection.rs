@@ -31,6 +31,8 @@ pub struct ConnectionModel {
 	pub avatar_url: Option<String>,
 	pub website_url: Option<String>,
 
+	pub is_public: bool,
+
 	#[serde(skip)]
 	pub oauth_authorisations: Vec<OAuthAuthorisationModel>
 }
@@ -77,7 +79,7 @@ impl ConnectionModel {
 
 		let connections = sqlx::query!(
 			"
-			SELECT id, sub, type as kind, username, display_name, avatar_url, website_url, user_id
+			SELECT id, sub, type as kind, username, display_name, avatar_url, website_url, user_id, is_public
 			FROM user_connections
 			WHERE id = ANY($1)
 			",
@@ -97,6 +99,73 @@ impl ConnectionModel {
 
 					avatar_url: record.avatar_url,
 					website_url: record.website_url,
+
+					is_public: record.is_public,
+
+					oauth_authorisations: oauth_authorisations
+						.remove(&id)
+						.map(|x| x.1)
+						.unwrap_or_default()
+				});
+				async move { Ok(acc) }
+			})
+			.await?;
+
+		Ok(connections)
+	}
+
+	pub async fn get_user_many(user_id: Id<UserMarker>) -> Result<Vec<Self>> {
+		let mut transaction = Pin::static_ref(&PG_POOL)
+			.await
+			.begin()
+			.await?;
+		let oauth_authorisations = sqlx::query!(
+			"
+			SELECT id, connection_id, token_type, expires_at, access_token, refresh_token
+			FROM user_connection_oauth_authorisations
+			WHERE user_id = $1
+			",
+			user_id.value
+		)
+			.fetch(&mut *transaction)
+			.try_fold(DashMap::<Id<ConnectionMarker>, Vec<OAuthAuthorisationModel>>::new(), |acc, record| {
+				acc.entry(record.connection_id.into())
+					.or_default()
+					.push(OAuthAuthorisationModel {
+						id: record.id as u64,
+						token_type: record.token_type,
+						expires_at: record.expires_at,
+						access_token: record.access_token,
+						refresh_token: record.refresh_token
+					});
+				async move { Ok(acc) }
+			})
+			.await?;
+
+		let connections = sqlx::query!(
+			"
+			SELECT id, sub, type as kind, username, display_name, avatar_url, website_url, is_public
+			FROM user_connections
+			WHERE user_id = $1
+			",
+			user_id.value
+		)
+			.fetch(&mut *transaction)
+			.try_fold(Vec::new(), |mut acc, record| {
+				let id: Id<ConnectionMarker> = record.id.into();
+				acc.push(Self {
+					id,
+					sub: record.sub,
+					kind: ConnectionKind::from_i16(record.kind).unwrap(),
+					user_id,
+
+					username: record.username,
+					display_name: record.display_name,
+
+					avatar_url: record.avatar_url,
+					website_url: record.website_url,
+
+					is_public: record.is_public,
 
 					oauth_authorisations: oauth_authorisations
 						.remove(&id)
