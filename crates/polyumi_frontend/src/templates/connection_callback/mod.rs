@@ -9,6 +9,23 @@ use twilight_model::id::{ marker::GuildMarker, Id as DiscordId };
 
 use crate::Result;
 
+pub async fn connection_unsupported(connection_kind: ConnectionKind, user_id: Id<UserMarker>) -> Result<HttpResponse> {
+	let user = UserModel::get_many(&[user_id])
+		.await?
+		.into_iter()
+		.next()
+		.unwrap();
+	
+	Ok(HttpResponse::Ok()
+		.append_header(("content-type", "text/html; charset=utf-8"))
+		.body(
+			include_str!("connection_unsupported.html")
+				.replace("{{ connection_kind }}", &format!("{connection_kind:?}"))
+				.replace("{{ user_name }}", user.display_name())
+		)
+	)
+}
+
 pub async fn mellow_done(connection_kind: ConnectionKind, server_id: DiscordId<GuildMarker>, user_id: Id<UserMarker>) -> Result<HttpResponse> {
 	let mut body = include_str!("mellow_done.html")
 		.replace("{{ connection_kind }}", &format!("{connection_kind:?}"));

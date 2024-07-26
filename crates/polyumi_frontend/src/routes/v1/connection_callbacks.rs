@@ -19,7 +19,7 @@ use polyumi_util::{
 		Id
 	},
 	get_json, post_json,
-	HTTP, PG_POOL
+	PG_POOL
 };
 use serde::{ Deserialize, Serialize };
 use std::{
@@ -81,15 +81,6 @@ struct PatreonUserAttributes {
 	image_url: String
 }
 
-#[derive(Deserialize)]
-struct RobloxUser {
-	sub: String,
-	name: Option<String>,
-	preferred_username: Option<String>,
-	profile: Option<String>,
-	picture: Option<String>
-}
-
 struct CallbackResponse {
 	avatar_url: Option<String>,
 	display_name: Option<String>,
@@ -104,8 +95,6 @@ const DISCORD_APP_ID: &str = env!("DISCORD_APP_ID");
 const DISCORD_APP_SECRET: &str = env!("DISCORD_APP_SECRET");
 const PATREON_APP_ID: &str = env!("PATREON_APP_ID");
 const PATREON_APP_SECRET: &str = env!("PATREON_APP_SECRET");
-const ROBLOX_APP_ID: &str = env!("ROBLOX_APP_ID");
-const ROBLOX_APP_SECRET: &str = env!("ROBLOX_APP_SECRET");
 const WEBSITE_URL: &str = env!("WEBSITE_URL");
 
 #[derive(Serialize)]
@@ -211,48 +200,11 @@ async fn connection_callback(request: HttpRequest, path: web::Path<ConnectionKin
 				website_url
 			}
 		},
-		ConnectionKind::Roblox => {
-			let code = query.code
-				.clone()
-				.ok_or(ErrorModelKind::InvalidQuery)?;
-
-			let params = HashMap::from([
-				("client_id", ROBLOX_APP_ID.into()),
-				("client_secret", ROBLOX_APP_SECRET.into()),
-				("code", code),
-				("grant_type", "authorization_code".into())
-			]);
-
-			let token: BasicToken = post_json("https://apis.roblox.com/oauth/v1/token")
-				.form(&params)
-				.await?;
-
-			let user: RobloxUser = get_json("https://apis.roblox.com/oauth/v1/userinfo")
-				.header("authorization", format!("{} {}", token.token_type, token.access_token))
-				.await?;
-
-			HTTP
-				.post("https://apis.roblox.com/oauth/v1/token/revoke")
-				.form(&HashMap::from([
-					("client_id", ROBLOX_APP_ID.into()),
-					("client_secret", ROBLOX_APP_SECRET.into()),
-					("token", token.refresh_token.clone())
-				]))
-				.send()
-				.await?;
-
-			let sub = user.sub;
-			let website_url = Some(user.profile.unwrap_or_else(|| format!("https://www.roblox.com/users/{sub}/profile")));
-			CallbackResponse {
-				avatar_url: user.picture,
-				display_name: user.name,
-				name: user.preferred_username,
-				oauth_authorisation: None,
-				sub,
-				website_url
-			}
-		},
-		ConnectionKind::YouTube => return Err(ErrorModelKind::InternalError.model())
+		ConnectionKind::Roblox |
+		ConnectionKind::YouTube => {
+			return crate::templates::connection_callback::connection_unsupported(connection_kind, user_id.unwrap())
+				.await;
+		}
 	};
 
 	let pinned = Pin::static_ref(&PG_POOL).await;
